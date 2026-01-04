@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zander Van den Bosch - Prototyping Journey</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#FF6B35',
+            secondary: '#004E89',
+            accent: '#FFB627',
+            dark: '#0A0A0F',
+            light: '#FAFAFA'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * {
+      cursor: none !important;
+    }
+    
+    html {
+      scroll-behavior: smooth;
+    }
+    
+    body {
+      overflow-x: hidden;
+    }
+    
+    /* Custom Cursor */
+    #custom-cursor {
+      position: fixed;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(255, 107, 53, 0.6);
+      pointer-events: none;
+      z-index: 9999;
+      transition: transform 0.15s ease, width 0.3s ease, height 0.3s ease, background 0.3s ease;
+      mix-blend-mode: difference;
+    }
+    
+    #custom-cursor.hover {
+      width: 60px;
+      height: 60px;
+      background: rgba(255, 182, 39, 0.4);
+    }
+    
+    #cursor-follower {
+      position: fixed;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: white;
+      pointer-events: none;
+      z-index: 9998;
+      transition: transform 0.1s ease;
+    }
+    
+    /* Asymmetric Layout */
+    .asymmetric-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 2rem;
+      align-items: start;
+    }
+    
+    .span-5 { grid-column: span 5; }
+    .span-7 { grid-column: span 7; }
+    .span-4 { grid-column: span 4; }
+    .span-8 { grid-column: span 8; }
+    .span-6 { grid-column: span 6; }
+    .span-3 { grid-column: span 3; }
+    .span-9 { grid-column: span 9; }
+    
+    @media (max-width: 768px) {
+      .span-5, .span-7, .span-4, .span-8, .span-6, .span-3, .span-9 {
+        grid-column: span 12;
+      }
+    }
+    
+    /* Week Cards with parallax effect */
+    .week-card {
+      position: relative;
+      overflow: hidden;
+      transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+      transform-style: preserve-3d;
+    }
+    
+    .week-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 182, 39, 0.2), transparent);
+      transition: left 0.5s ease;
+    }
+    
+    .week-card:hover::before {
+      left: 100%;
+    }
+    
+    .week-card:hover {
+      transform: translateY(-10px) scale(1.02);
+      box-shadow: 0 30px 60px -15px rgba(255, 107, 53, 0.3);
+    }
+    
+    .week-card:hover .week-image {
+      transform: scale(1.1);
+    }
+    
+    .week-image {
+      transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    
+    /* Smooth reveal animations */
+    .reveal {
+      opacity: 0;
+      transform: translateY(50px);
+      transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    /* Modal animations */
+    .modal-backdrop {
+      backdrop-filter: blur(12px);
+      animation: fadeIn 0.4s ease;
+    }
+    
+    .modal-content {
+      animation: slideUp 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(60px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    
+    /* Gradient text */
+    .gradient-text {
+      background: linear-gradient(135deg, #FF6B35, #FFB627);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    /* Image upload preview */
+    .image-preview {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 0.75rem;
+      transition: transform 0.3s ease;
+    }
+    
+    .image-preview:hover {
+      transform: scale(1.05);
+    }
+    
+    /* Floating elements */
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+    }
+    
+    .floating {
+      animation: float 6s ease-in-out infinite;
+    }
+    
+    /* Parallax scroll effect */
+    .parallax {
+      transition: transform 0.1s ease-out;
+    }
+  </style>
+</head>
+<body class="bg-light dark:bg-dark text-gray-800 dark:text-gray-200 transition-colors duration-500">
+
+  <!-- Custom Cursor -->
+  <div id="custom-cursor"></div>
+  <div id="cursor-follower"></div>
+
+  <!-- NAVBAR -->
+  <nav id="navbar" class="fixed top-0 left-0 w-full z-50 transition-all duration-500 bg-white/80 dark:bg-dark/80 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+      <div class="flex justify-between items-center h-20">
+        
+        <!-- Logo -->
+        <div class="flex items-center space-x-6">
+          <a href="#home" class="text-3xl font-bold gradient-text tracking-tight">
+            ZVdB
+          </a>
+          <div class="hidden md:block text-sm border-l-2 border-primary dark:border-accent pl-6">
+            <div class="font-semibold">Zander Van den Bosch</div>
+            <div class="text-gray-500 dark:text-gray-400">1GDM2 • Prototyping</div>
+          </div>
+        </div>
+
+        <!-- Desktop Navigation -->
+        <div class="hidden md:flex items-center space-x-8">
+          <a href="#work" class="nav-link text-sm font-medium hover:text-primary dark:hover:text-accent transition-all">Portfolio</a>
+          <a href="#about" class="nav-link text-sm font-medium hover:text-primary dark:hover:text-accent transition-all">Over Mij</a>
+          
+          <!-- Dark Mode Toggle -->
+          <button id="theme-toggle" class="p-2.5 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all">
+            <svg id="theme-icon-sun" class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"></path>
+            </svg>
+            <svg id="theme-icon-moon" class="w-5 h-5 block dark:hidden" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Mobile menu button -->
+        <button id="mobile-menu-btn" class="md:hidden p-2 rounded-md">
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="hidden md:hidden bg-white dark:bg-dark border-t dark:border-gray-800">
+      <div class="px-4 py-3 border-b dark:border-gray-800">
+        <div class="font-semibold">Zander Van den Bosch</div>
+        <div class="text-sm text-gray-500 dark:text-gray-400">1GDM2</div>
+      </div>
+      <div class="px-2 pt-2 pb-3 space-y-1">
+        <a href="#work" class="block px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">Portfolio</a>
+        <a href="#about" class="block px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">Over Mij</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO SECTION - Asymmetric -->
+  <section id="home" class="min-h-screen flex items-center pt-32 pb-20 px-6 sm:px-8 lg:px-12">
+    <div class="max-w-7xl mx-auto w-full">
+      <div class="asymmetric-grid">
+        
+        <!-- Left: Text Content -->
+        <div class="span-7 reveal">
+          <div class="inline-block px-4 py-2 mb-6 bg-primary/10 dark:bg-accent/10 rounded-full">
+            <span class="text-primary dark:text-accent font-semibold text-sm">1GDM2 • Prototyping 2025</span>
+          </div>
+          
+          <h1 class="text-6xl md:text-7xl lg:text-8xl font-bold mb-8 leading-tight">
+            Mijn
+            <br/>
+            <span class="gradient-text">Creative</span>
+            <br/>
+            Journey
+          </h1>
+          
+          <p class="text-xl md:text-2xl text-gray-600 dark:text-gray-400 mb-12 max-w-2xl leading-relaxed">
+            13 weken van ontdekking, experimenteren en bouwen. Van eerste prototype tot eindproduct.
+          </p>
+          
+          <div class="flex gap-4">
+            <a href="#work" class="px-8 py-4 bg-primary text-white rounded-full hover:bg-opacity-90 transition-all transform hover:scale-105 shadow-lg font-medium">
+              Bekijk Mijn Werk
+            </a>
+            <a href="#about" class="px-8 py-4 border-2 border-primary text-primary dark:border-accent dark:text-accent rounded-full hover:bg-primary hover:text-white dark:hover:bg-accent dark:hover:text-dark transition-all font-medium">
+              Over Mij
+            </a>
+          </div>
+        </div>
+        
+        <!-- Right: Profile Image -->
+        <div class="span-5 reveal floating" style="animation-delay: 0.2s;">
+          <div class="relative">
+            <div class="aspect-square rounded-3xl overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20 dark:from-primary/10 dark:to-accent/10">
+              <img id="hero-image" src="" alt="Zander Van den Bosch" class="w-full h-full object-cover opacity-0 transition-opacity duration-500" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\'flex items-center justify-center h-full text-6xl\'>📸</div>'">
+              <input type="file" id="hero-image-upload" accept="image/*" class="hidden">
+              <label for="hero-image-upload" class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                <span class="text-white font-semibold text-lg">Klik om foto toe te voegen</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  </section>
+
+  <!-- WEEKS PORTFOLIO - Asymmetric Grid -->
+  <section id="work" class="py-20 px-6 sm:px-8 lg:px-12">
+    <div class="max-w-7xl mx-auto">
+      
+      <div class="mb-16 reveal">
+        <h2 class="text-5xl md:text-6xl font-bold gradient-text mb-4">13 Weken Portfolio</h2>
+        <p class="text-xl text-gray-600 dark:text-gray-400">Klik op een week om de details te bekijken</p>
+      </div>
+      
+      <div class="asymmetric-grid">
+        
+        <!-- Week 1 - Large -->
+        <div class="span-8 reveal week-card bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800" onclick="openWeek(1)">
+          <div class="aspect-video bg-gradient-to-br from-primary/20 to-secondary/20">
+            <img class="week-image w-full h-full object-cover" src="" alt="Week 1" onerror="this.style.display='none'">
+          </div>
+          <div class="p-8">
+            <span class="text-sm font-bold text-primary dark:text-accent">WEEK 01</span>
+            <h3 class="text-3xl font-bold mt-2 mb-3">Introductie Prototyping</h3>
+            <p class="text-gray-600 dark:text-gray-400">Tailwind installeren en de basis opzetten</p>
+          </div>
+        </div>
+        
+        <!-- Week 2 - Small -->
+        <div class="span-4 reveal week-card bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800" onclick="openWeek(2)">
+          <div class="aspect-square bg-gradient-to-br from-accent/20 to-primary/20">
+            <img class="week-image w-full h-full object-cover" src="" alt="Week 2" onerror="this.style.display='none'">
+          </div>
+          <div class="p-6">
+            <span class="text-sm font-bold text-primary dark:text-accent">WEEK 02</span>
+            <h3 class="text-2xl font-bold mt-2 mb-2">Schetsen en Figma</h3>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">Tekenen en Software regelen</p>
+          </div>
+        </div>
+        
+        <!-- Week 3 - Small -->
+        <div class="span-4 reveal week-card bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800" onclick="openWeek(3)">
+          <div class="aspect-square bg-gradient-to-br from-secondary/20 to-accent/20">
+            <img class="week-image w-full h-full object-cover" src="" alt="Week 3" onerror="this.style.display='none'">
+          </div>
+          <div class="p-6">
+            <span class="text-sm font-bold text-primary dark:text-accent">WEEK 03</span>
+            <h3 class="text-2xl font-bold mt-2 mb-2">Figma ontwerp en componenten</h3>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">Digitaal maken</p>
+          </div>
+        </div>
+        
+        <!-- Week 4 - Large -->
+        <div class="span-8 reveal week-card bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800" onclick="openWeek(4)">
+          <div class="aspect-video bg-gradient-to-br from-accent/20 to-secondary/20">
+            <img class="week-image w-full h-full object-cover" src="" alt="Week 4" onerror="this.style.display='none'">
+          </div>
+          <div class="p-8">
+            <span class="text-sm font-bold text-primary dark:text-accent">WEEK 04</span>
+            <h3 class="text-3xl font-bold mt-2 mb-3">Typografie, kleuren en ruimte</h3>
+            <p class="text-gray-600 dark:text-gray-400">Vormgeving</p>
+          </div>
+        </div>
+        
+        <!-- Week 5 -->
+        <div class="span-6 reveal week-card bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800" onclick="openWeek(5)">
+          <div class="aspect-video bg-gradient-to-br from-primary/20 to-accent/20">
+            <img class="week-image w-full h-full object-cover" src="" alt="Week 5" onerror="this.style.display='none'">
+          </div>
+          <div class="p-6">
+            <span class="text-sm font-bold text-primary dark:text-accent">WEEK 05</span>
+            <h3 class="text-2xl font-bold mt-2 mb-2">Introductie coderen (HTML)</h3>
+            <p class="text-gray-600 dark:text-gray-400">Leren websites maken</p>
+          </div>
+        </div>
+        
+        <!-- Week 6 -->
+        <div class="span-6 reveal week-card bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800" onclick="openWeek(6)">
+          <div class="aspect-video bg-gradient-to-br from-secondary/20 to-primary/20">
+            <img class="week-image w-full h-full object-cover" src="" alt="Week 6" onerror="this.style.display='none'">
+          </div>
+          <div class="p-6">
+            <span class="text-sm font-bold text-primary dark:text-accent">WEEK 06</span>
+            <h3 class="text-2xl font-bold mt-2 mb-2">Structuur HTML en CSS</h3>
+            <p class="text-gray-600 dark:text-gray-400">Code structuur en opmaak</p>
+          </div>
+        </div>
+        
+        <!-- Week 7 -->
+        <div class="span-4 reveal week-card bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800" onclick="openWeek(7)">
+          <div class="aspect-square bg-gradient-to-br from-accent/20 to-secondary/20">
+            <img class="week-image w-full h-full object-cover" src="" alt="Week 7" onerror="this.style.display='none'">
+          </div>
+          <div class="p-6">
+            <span class="text-sm font-bold text-primary dark:text-accent">WEEK 07</span>
+            <h3 class="text-2xl font-bold mt-2 mb-2">Herfstvakantie</h3>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">Vakantie</p>
+          </div>
+        </div>
+        
+        <!-- Week 8 - Large -->
+        <div class="span-8 reveal week-card bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800" onclick="openWeek(8)">
+          <div class="aspect-video bg-gradient-to-br from-primary/20 to-accent/20">
+            <img class="week-image w-full h-full object-cover" src="" alt="Week 8" onerror="this.style.display='none'">
+          </div>
+          <div class="p-8">
+            <span class="text-sm font-bold text-primary dark:text-accent">WEEK 08</span>
+            <h3 class="text-3xl font-bold mt-2 mb-3">Toetsweek</h3>
+            <p class="text-gray-600 dark:text-gray-400">Kennisexamens</p>
+          </div>
+        </div>
+        
+        <!-- Week 9 -->
+        <div class="span-6 reveal week-card bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800" onclick="openWeek(9)">
+          <div class="aspect-video bg-gradient-to-br from-secondary/20 to-accent/20">
+            <img class="week-image w-full h-full object-cover" src="" alt="Week 9" onerror="this.style.display='none'">
+          </div>
+          <div class="p-6">
+            <span class="text-sm font-bold text-primary dark:text-accent">WEEK 09</span>
+            <h3 class="text-2xl font-bold mt-2 mb-2">Brugdag</h3>
+            <p class="text-gray-600 dark:text-gray-400">Geen les</p>
+          </div>
+        </div>
+        
+        <!-- Week 10 -->
+        <div class="span-6 reveal week-card bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800" onclick="openWeek(10)">
+          <div class="aspect-video bg-gradient-to-br from-accent/20 to-primary/20">
+            <img class="week-image w-full h-full object-cover" src="" alt="Week 10" onerror="this.style.display='none'">
+          </div>
+          <div class="p-6">
+            <span class="text-sm font-bold text-primary dark:text-accent">WEEK 10</span>
+            <h3 class="text-2xl font-bold mt-2 mb-2">Layout en Tailwind</h3>
+            <p class="text-gray-600 dark:text-gray-400">Layout verzinnen en gebruik van tailwind</p>
+          </div>
+        </div>
+        
+        <!-- Week 11 -->
+        <div class="span-4 reveal week-card bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800" onclick="openWeek(11)">
+          <div class="aspect-square bg-gradient-to-br from-primary/20 to-secondary/20">
+            <img class="week-image w-full h-full object-cover" src="" alt="Week 11" onerror="this.style.display='none'">
+          </div>
+          <div class="p-6">
+            <span class="text-sm font-bold text-primary dark:text-accent">WEEK 11</span>
+            <h3 class="text-2xl font-bold mt-2 mb-2">Tailwind en HTML</h3>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">Optimalisatie</p>
+          </div>
+        </div>
+        
+        <!-- Week 12 -->
+        <div class="span-4 reveal week-card bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800" onclick="openWeek(12)">
+          <div class="aspect-square bg-gradient-to-br from-accent/20 to-secondary/20">
+            <img class="week-image w-full h-full object-cover" src="" alt="Week 12" onerror="this.style.display='none'">
+          </div>
+          <div class="p-6">
+            <span class="text-sm font-bold text-primary dark:text-accent">WEEK 12</span>
+            <h3 class="text-2xl font-bold mt-2 mb-2">Interactieve Figma</h3>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">Prototypes maken</p>
+          </div>
+        </div>
+        
+        <!-- Week 13 - Large Featured -->
+        <div class="span-8 reveal week-card bg-gradient-to-br from-primary to-accent rounded-2xl overflow-hidden shadow-2xl" onclick="openWeek(13)">
+          <div class="aspect-video bg-black/20">
+            <img class="week-image w-full h-full object-cover mix-blend-overlay" src="" alt="Week 13" onerror="this.style.display='none'">
+          </div>
+          <div class="p-8 text-white">
+            <span class="text-sm font-bold">WEEK 13</span>
+            <h3 class="text-3xl font-bold mt-2 mb-3">Creating interactieve Figma</h3>
+            <p class="opacity-90">Verfijnen en testen</p>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL FOR WEEK DETAILS -->
+  <div id="week-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="modal-backdrop flex items-center justify-center min-h-screen px-4 bg-black/60">
+      
+      <div class="modal-content w-full max-w-5xl bg-white dark:bg-gray-900 rounded-3xl overflow-hidden shadow-2xl">
+        
+        <!-- Header with Image -->
+        <div class="relative">
+          <div class="aspect-video bg-gradient-to-br from-primary to-accent relative overflow-hidden">
+            <img id="modal-week-image" src="" alt="" class="w-full h-full object-cover opacity-0 transition-opacity" onerror="this.style.display='none'">
+            <input type="file" id="modal-week-image-upload" accept="image/*" class="hidden">
+            <label for="modal-week-image-upload" class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+              <span class="text-white font-semibold text-lg">📸 Voeg week-foto toe</span>
+            </label>
+          </div>
+          <button onclick="closeModal()" class="absolute top-6 right-6 text-white hover:text-gray-200 transition-colors bg-black/30 hover:bg-black/50 rounded-full p-3 backdrop-blur-sm">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Content -->
+        <div class="p-8 space-y-8">
+          
+          <div>
+            <span id="modal-week-tag" class="text-sm font-bold text-primary dark:text-accent"></span>
+            <h3 id="modal-title" class="text-4xl font-bold mt-2"></h3>
+          </div>
+          
+          <div class="space-y-6">
+            
+            <div class="border-l-4 border-primary dark:border-accent pl-6 py-2">
+              <h4 class="text-xl font-semibold mb-3 flex items-center">
+                <span class="text-2xl mr-3">📝</span> Wat heb ik gedaan?
+              </h4>
+              <textarea id="modal-content-1" class="w-full p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 focus:border-primary dark:focus:border-accent focus:outline-none transition-colors resize-none" rows="4" placeholder="Beschrijf hier wat je deze week hebt gedaan..."></textarea>
+            </div>
+            
+            <div class="border-l-4 border-secondary pl-6 py-2">
+              <h4 class="text-xl font-semibold mb-3 flex items-center">
+                <span class="text-2xl mr-3">💡</span> Wat heb ik geleerd?
+              </h4>
+              <textarea id="modal-content-2" class="w-full p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 focus:border-secondary focus:outline-none transition-colors resize-none" rows="4" placeholder="Beschrijf je leerpunten..."></textarea>
+            </div>
+            
+            <div class="border-l-4 border-accent pl-6 py-2">
+              <h4 class="text-xl font-semibold mb-3 flex items-center">
+                <span class="text-2xl mr-3">🤔</span> Reflectie
+              </h4>
+              <textarea id="modal-content-3" class="w-full p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 focus:border-accent focus:outline-none transition-colors resize-none" rows="4" placeholder="Reflecteer op je ervaringen..."></textarea>
+            </div>
+            
+            <!-- Extra Image Upload -->
+            <div class="border-l-4 border-gray-300 dark:border-gray-600 pl-6 py-2">
+              <h4 class="text-xl font-semibold mb-3 flex items-center">
+                <span class="text-2xl mr-3">📷</span> Extra Afbeeldingen
+              </h4>
+              <input type="file" id="modal-extra-image-upload" accept="image/*" class="hidden">
+              <label for="modal-extra-image-upload" class="block w-full p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl hover:border-primary dark:hover:border-accent transition-colors cursor-pointer text-center">
+                <span class="text-gray-500 dark:text-gray-400">Klik om extra foto's toe te voegen</span>
+              </label>
+              <div id="extra-images-preview" class="mt-4 grid grid-cols-3 gap-4"></div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Navigation Footer -->
+        <div class="bg-gray-50 dark:bg-gray-800 px-8 py-6 flex justify-between items-center border-t dark:border-gray-700">
+          <button onclick="previousWeek()" id="prev-btn" class="px-6 py-3 bg-gray-200 dark:bg-gray-700 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-all flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            <span class="font-medium">Vorige</span>
+          </button>
+          
+          <span id="week-indicator" class="text-gray-600 dark:text-gray-400 font-semibold"></span>
+          
+          <button onclick="nextWeek()" id="next-btn" class="px-6 py-3 bg-primary hover:bg-opacity-90 text-white rounded-full transition-all flex items-center space-x-2">
+            <span class="font-medium">Volgende</span>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ABOUT SECTION - Asymmetric -->
+  <section id="about" class="py-32 px-6 sm:px-8 lg:px-12 bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto">
+      
+      <div class="asymmetric-grid">
+        
+        <!-- Left: Image -->
+        <div class="span-5 reveal">
+          <div class="sticky top-32">
+            <div class="aspect-[4/5] rounded-3xl overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20 dark:from-primary/10 dark:to-accent/10">
+              <img id="about-image" src="" alt="About me" class="w-full h-full object-cover opacity-0 transition-opacity duration-500" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\'flex items-center justify-center h-full text-6xl\'>🎨</div>'">
+              <input type="file" id="about-image-upload" accept="image/*" class="hidden">
+              <label for="about-image-upload" class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                <span class="text-white font-semibold text-lg">Klik om foto toe te voegen</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Right: Content -->
+        <div class="span-7 reveal space-y-8">
+          <div>
+            <h2 class="text-5xl md:text-6xl font-bold gradient-text mb-6">Over Mij</h2>
+            <div class="space-y-4 text-gray-700 dark:text-gray-300 text-lg leading-relaxed">
+              <p>
+                Ik ben <strong class="text-primary dark:text-accent">Zander Van den Bosch</strong> van <strong>1GDM2</strong>. 
+                Deze website is mijn portfolio voor het vak Prototyping, waar ik mijn reis van 13 weken documenteer.
+              </p>
+              <p>
+                Tijdens dit vak heb ik leren werken met applicaties zoals Tailwind CSS, JavaScript, Studio Visual Code en andere verschillende tools. 
+                We kregen wekelijks nieuwe opdrachten die verder gingen op wat we in de les hadden gezien en moesten met de nieuwe dingen die we zagen in deze les anpassingen maken aan het vorige design.
+              </p>
+              <p>
+                In deze portfolio is mijn groei als developer en designer zichtbaar.
+              </p>
+            </div>
+          </div>
+          
+          <!-- Skills/Interests -->
+          <div class="grid grid-cols-2 gap-4">
+            <div class="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+              <div class="text-3xl mb-3">💻</div>
+              <h3 class="font-bold mb-2">Development</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">HTML, CSS, JavaScript, Tailwind</p>
+            </div>
+            <div class="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+              <div class="text-3xl mb-3">🎨</div>
+              <h3 class="font-bold mb-2">Design</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">UI/UX, Prototyping, Interaction</p>
+            </div>
+            <div class="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+              <div class="text-3xl mb-3">⚙️</div>
+              <h3 class="font-bold mb-2">Tools</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">VS Code, Git, Netlify, NPM</p>
+            </div>
+            <div class="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+              <div class="text-3xl mb-3">🚀</div>
+              <h3 class="font-bold mb-2">Passie</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">Leren, Experimenteren, Bouwen</p>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="bg-white dark:bg-gray-900 border-t dark:border-gray-800 py-12">
+    <div class="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+      <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+        <div class="text-center md:text-left">
+          <div class="text-2xl font-bold gradient-text mb-2">Zander Van den Bosch</div>
+          <div class="text-gray-600 dark:text-gray-400">1GDM2 • Prototyping Portfolio 2025</div>
+        </div>
+        <div class="flex space-x-6">
+          <a href="#home" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-accent transition-colors">Home</a>
+          <a href="#work" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-accent transition-colors">Portfolio</a>
+          <a href="#about" class="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-accent transition-colors">Over Mij</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JAVASCRIPT -->
+  <script>
+    let currentWeek = 1;
+    
+    const weekData = {
+      1: { title: 'Week 1: Introductie Prototyping', subtitle: 'Tailwind installeren en de basis opzetten' },
+      2: { title: 'Week 2: Schetsen en Figma', subtitle: 'Werken met npm en package.json' },
+      3: { title: 'Week 3: Figma ontwerp en componenten', subtitle: 'De fundamenten van JavaScript leren' },
+      4: { title: 'Week 4: Typografie, kleuren en ruimte', subtitle: 'Buttons, accordions en meer' },
+      5: { title: 'Week 5: Introductie coderen (HTML)', subtitle: 'Mobile-first development' },
+      6: { title: 'Week 6: Structuur HTML & CSS', subtitle: 'Version control en samenwerken' },
+      7: { title: 'Week 7: Herfstvakantie', subtitle: 'Data ophalen en verwerken' },
+      8: { title: 'Week 8: Toetsweek', subtitle: 'Smooth bewegingen toevoegen' },
+      9: { title: 'Week 9: Brugdag', subtitle: 'Formulieren maken en valideren' },
+      10: { title: 'Week 10: Layout en Tailwind', subtitle: 'Je website online zetten' },
+      11: { title: 'Week 11: Tailwind en HTML', subtitle: 'Snelheid en efficiency verbeteren' },
+      12: { title: 'Week 12: Interactieve Figma', subtitle: 'Fouten opsporen en oplossen' },
+      13: { title: 'Week 13: Maken van Interactieve Figma', subtitle: 'Het eindproject presenteren' }
+    };
+
+    // Custom Cursor
+    const cursor = document.getElementById('custom-cursor');
+    const follower = document.getElementById('cursor-follower');
+    
+    let mouseX = 0, mouseY = 0;
+    let followerX = 0, followerY = 0;
+    
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      
+      cursor.style.left = mouseX + 'px';
+      cursor.style.top = mouseY + 'px';
+    });
+    
+    function animateFollower() {
+      followerX += (mouseX - followerX) * 0.1;
+      followerY += (mouseY - followerY) * 0.1;
+      
+      follower.style.left = followerX + 'px';
+      follower.style.top = followerY + 'px';
+      
+      requestAnimationFrame(animateFollower);
+    }
+    animateFollower();
+    
+    // Hover effect on interactive elements
+    document.querySelectorAll('a, button, .week-card, label[for], input[type="file"]').forEach(el => {
+      el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
+      el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+    });
+
+    // Dark Mode Toggle
+    const themeToggle = document.getElementById('theme-toggle');
+    const html = document.documentElement;
+    
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    if (currentTheme === 'dark') {
+      html.classList.add('dark');
+    }
+    
+    themeToggle.addEventListener('click', () => {
+      html.classList.toggle('dark');
+      const theme = html.classList.contains('dark') ? 'dark' : 'light';
+      localStorage.setItem('theme', theme);
+    });
+
+    // Mobile Menu Toggle
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const mobileMenu = document.getElementById('mobile-menu');
+    
+    mobileMenuBtn.addEventListener('click', () => {
+      mobileMenu.classList.toggle('hidden');
+    });
+
+    const mobileLinks = mobileMenu.querySelectorAll('a');
+    mobileLinks.forEach(link => {
+      link.addEventListener('click', () => {
+        mobileMenu.classList.add('hidden');
+      });
+    });
+
+    // Navbar Hide on Scroll
+    let lastScroll = 0;
+    const navbar = document.getElementById('navbar');
+    
+    window.addEventListener('scroll', () => {
+      const currentScroll = window.pageYOffset;
+      
+      if (currentScroll > lastScroll && currentScroll > 100) {
+        navbar.style.transform = 'translateY(-100%)';
+      } else {
+        navbar.style.transform = 'translateY(0)';
+      }
+      
+      lastScroll = currentScroll;
+    });
+
+    // Scroll Reveal Animation
+    const reveals = document.querySelectorAll('.reveal');
+    
+    function checkReveal() {
+      reveals.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        const windowHeight = window.innerHeight;
+        
+        if (rect.top < windowHeight * 0.85) {
+          el.classList.add('active');
+        }
+      });
+    }
+    
+    window.addEventListener('scroll', checkReveal);
+    checkReveal();
+
+    // Image Upload Handlers
+    function handleImageUpload(inputId, imageId) {
+      const input = document.getElementById(inputId);
+      const img = document.getElementById(imageId);
+      
+      input.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            img.src = e.target.result;
+            img.style.opacity = '1';
+            localStorage.setItem(imageId, e.target.result);
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+      
+      // Load saved image
+      const saved = localStorage.getItem(imageId);
+      if (saved) {
+        img.src = saved;
+        img.style.opacity = '1';
+      }
+    }
+    
+    handleImageUpload('hero-image-upload', 'hero-image');
+    handleImageUpload('about-image-upload', 'about-image');
+
+    // Modal Functions
+function openWeek(weekNum) {
+  currentWeek = weekNum;
+  const modal = document.getElementById('week-modal');
+  const modalTitle = document.getElementById('modal-title');
+  const modalWeekTag = document.getElementById('modal-week-tag');
+  const weekIndicator = document.getElementById('week-indicator');
+  const modalWeekImage = document.getElementById('modal-week-image');
+  
+  modalWeekTag.textContent = `WEEK ${weekNum.toString().padStart(2, '0')}`;
+  modalTitle.textContent = weekData[weekNum].title.replace(`Week ${weekNum}: `, '');
+  weekIndicator.textContent = `Week ${weekNum} van 13`;
+  
+  // Load week image in modal header - FIXED VERSION
+  const savedWeekImage = localStorage.getItem('week' + weekNum + '_image');
+  
+  if (savedWeekImage) {
+    modalWeekImage.src = savedWeekImage;
+    modalWeekImage.style.opacity = '1';
+    modalWeekImage.style.display = 'block';
+  } else {
+    modalWeekImage.src = '';
+    modalWeekImage.style.opacity = '0';
+    modalWeekImage.style.display = 'block';
+  }
+  
+  loadWeekContent(weekNum);
+  
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  
+  updateNavigationButtons();
+}
+
+    function closeModal() {
+      const modal = document.getElementById('week-modal');
+      modal.classList.add('hidden');
+      document.body.style.overflow = 'auto';
+      saveWeekContent(currentWeek);
+    }
+
+    function nextWeek() {
+      if (currentWeek < 13) {
+        saveWeekContent(currentWeek);
+        openWeek(currentWeek + 1);
+      }
+    }
+
+    function previousWeek() {
+      if (currentWeek > 1) {
+        saveWeekContent(currentWeek);
+        openWeek(currentWeek - 1);
+      }
+    }
+
+    function updateNavigationButtons() {
+      const prevBtn = document.getElementById('prev-btn');
+      const nextBtn = document.getElementById('next-btn');
+      
+      prevBtn.disabled = currentWeek === 1;
+      
+      if (currentWeek === 13) {
+        nextBtn.querySelector('span').textContent = 'Sluiten';
+        nextBtn.onclick = closeModal;
+      } else {
+        nextBtn.querySelector('span').textContent = 'Volgende';
+        nextBtn.onclick = nextWeek;
+      }
+    }
+
+    function saveWeekContent(weekNum) {
+      const content1 = document.getElementById('modal-content-1').value;
+      const content2 = document.getElementById('modal-content-2').value;
+      const content3 = document.getElementById('modal-content-3').value;
+      
+      localStorage.setItem(`week${weekNum}_content1`, content1);
+      localStorage.setItem(`week${weekNum}_content2`, content2);
+      localStorage.setItem(`week${weekNum}_content3`, content3);
+    }
+
+    function loadWeekContent(weekNum) {
+      const content1 = localStorage.getItem(`week${weekNum}_content1`) || '';
+      const content2 = localStorage.getItem(`week${weekNum}_content2`) || '';
+      const content3 = localStorage.getItem(`week${weekNum}_content3`) || '';
+      
+      document.getElementById('modal-content-1').value = content1;
+      document.getElementById('modal-content-2').value = content2;
+      document.getElementById('modal-content-3').value = content3;
+    }
+
+    // Week image upload in modal
+    document.getElementById('modal-week-image-upload').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = document.getElementById('modal-week-image');
+          img.src = e.target.result;
+          img.style.opacity = '1';
+          localStorage.setItem(`week${currentWeek}_image`, e.target.result);
+          
+          // Update de week-card afbeelding op de hoofdpagina
+          updateWeekCardImage(currentWeek, e.target.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    
+    // Functie om week-card afbeelding te updaten
+    function updateWeekCardImage(weekNum, imageSrc) {
+      const weekCards = document.querySelectorAll('.week-card');
+      const weekCard = weekCards[weekNum - 1];
+      if (weekCard) {
+        const img = weekCard.querySelector('.week-image');
+        if (img) {
+          img.src = imageSrc;
+          img.style.display = 'block';
+          img.style.opacity = '1';
+        }
+      }
+    }
+    
+    // Laad alle opgeslagen week-afbeeldingen bij het laden van de pagina
+    function loadAllWeekImages() {
+      for (let i = 1; i <= 13; i++) {
+        const savedImage = localStorage.getItem(`week${i}_image`);
+        if (savedImage) {
+          updateWeekCardImage(i, savedImage);
+        }
+      }
+    }
+    
+    // Roep deze functie aan bij het laden van de pagina
+    loadAllWeekImages();
+
+    // Extra images upload
+    document.getElementById('modal-extra-image-upload').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const preview = document.getElementById('extra-images-preview');
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          img.className = 'image-preview';
+          preview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Close modal on backdrop click
+    document.getElementById('week-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'week-modal') {
+        closeModal();
+      }
+    });
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      const modal = document.getElementById('week-modal');
+      if (!modal.classList.contains('hidden')) {
+        if (e.key === 'Escape') {
+          closeModal();
+        } else if (e.key === 'ArrowRight' && currentWeek < 13) {
+          nextWeek();
+        } else if (e.key === 'ArrowLeft' && currentWeek > 1) {
+          previousWeek();
+        }
+      }
+    });
+
+    // Parallax effect on scroll
+    window.addEventListener('scroll', () => {
+      const scrolled = window.pageYOffset;
+      document.querySelectorAll('.parallax').forEach(el => {
+        const speed = el.dataset.speed || 0.5;
+        el.style.transform = `translateY(${scrolled * speed}px)`;
+      });
+    });
+    // FIX: Laad alle week afbeeldingen bij page load
+window.addEventListener('DOMContentLoaded', function() {
+  console.log('Loading saved week images...');
+  
+  // Loop door alle 13 weken
+  for (let i = 1; i <= 13; i++) {
+    const savedImage = localStorage.getItem('week' + i + '_image');
+    
+    if (savedImage) {
+      console.log('Found image for week', i);
+      
+      // Vind de week-card op de hoofdpagina
+      const weekCard = document.querySelector('[data-week="' + i + '"]');
+      if (weekCard) {
+        const img = weekCard.querySelector('.week-image');
+        if (img) {
+          img.src = savedImage;
+          img.style.display = 'block';
+        }
+      }
+    }
+  }
+});
+
+// FIX: Update modal image upload handler
+const modalImageUpload = document.getElementById('modal-week-image-upload');
+if (modalImageUpload) {
+  modalImageUpload.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      
+      reader.onload = function(event) {
+        const imageData = event.target.result;
+        
+        console.log('Uploading image for week', currentWeek);
+        
+        // 1. Toon in modal
+        const modalImg = document.getElementById('modal-week-image');
+        modalImg.src = imageData;
+        
+        // 2. Save in localStorage
+        localStorage.setItem('week' + currentWeek + '_image', imageData);
+        
+        // 3. Update week-card op hoofdpagina
+        const weekCard = document.querySelector('[data-week="' + currentWeek + '"]');
+        if (weekCard) {
+          const cardImg = weekCard.querySelector('.week-image');
+          if (cardImg) {
+            cardImg.src = imageData;
+            cardImg.style.display = 'block';
+            console.log('Updated card image for week', currentWeek);
+          }
+        }
+      };
+      
+      reader.readAsDataURL(file);
+    }
+  });
+}
+  </script>
+
+</body>
+</html>
